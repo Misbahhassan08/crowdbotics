@@ -480,9 +480,10 @@ class Ui_MainWindow2(object):
         self.btnSpace.setObjectName("btnSpace")
         self.txtKeyboard_2 = QtWidgets.QLineEdit(self.frame_keyboard)
         self.txtKeyboard_2.setGeometry(QtCore.QRect(0, 20, 711, 41))
-        self.txtKeyboard_2.setStyleSheet("color: rgb(255, 255, 255);\n"
-"background-color: rgb(31, 31, 31,0.7);\n"
-"font: 11pt \"Franklin Gothic Medium\";")
+        self.txtKeyboard_2.setStyleSheet("background-color: rgb(60, 99, 98);\n"
+"color:rgb(255, 255, 255);\n"
+"font: 11pt \"Franklin Gothic Heavy\";\n"
+"border-radius: 15px;")
         self.txtKeyboard_2.setAlignment(QtCore.Qt.AlignCenter)
         self.txtKeyboard_2.setObjectName("txtKeyboard_2")
         #MainWindow.setCentralWidget(self.centralwidget)
