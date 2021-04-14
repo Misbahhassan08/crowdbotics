@@ -47,6 +47,8 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         #thread loop crossing
 
         self.thread_loop = True
+
+        self.mode = "Pulse" # Time
         
         self.rpi = RPI()
         self._screen1 = GUI1()
@@ -81,6 +83,13 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self._screen2.txtbtn1.mouseReleaseEvent = self.presstxt_btn1
         self._screen2.txtbtn2.mouseReleaseEvent = self.presstxt_btn2
         self._screen2.txtbtn3.mouseReleaseEvent = self.presstxt_btn3
+
+        self._screen2.rbTime.toggled.connect(lambda:self.btnstate(self._screen2.rbTime))
+        self._screen2.rbPulse.toggled.connect(lambda:self.btnstate(self._screen2.rbPulse))
+
+        self._screen2.btn1.clicked.connect(lambda: self.btn1Clicked())
+        self._screen2.btn2.clicked.connect(lambda: self.btn2Clicked())
+        self._screen2.btn3.clicked.connect(lambda: self.btn3Clicked())
 
         
         
@@ -239,6 +248,36 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self.motor4 = False
         pass
     #------------------------------------- Screen 2 Functions --------------------------------------------------------------------------------
+    def btn1Clicked(self):
+        val = self._screen2.txtbtn1.text()
+        if len(val)>0:
+            self._screen2.btn1.setText(''+val)
+
+    def btn2Clicked(self):
+        val = self._screen2.txtbtn2.text()
+        if len(val)>0:
+            self._screen2.btn2.setText(''+val)
+            
+    def btn3Clicked(self):
+        val = self._screen2.txtbtn3.text()
+        if len(val)>0:
+            self._screen2.btn3.setText(''+val)
+            
+    def btnstate(self,b):
+        if b.text() == "Time":
+            if b.isChecked() == True:
+                print(b.text() + "is selected ")
+                self.mode = "Time"
+            else:
+                print(b.text() + "is deSelectd")
+        if b.text() == "Pulse":
+            if b.isChecked() == True:
+                print(b.text() + "is selected ")
+                self.mode = "Pulse"
+            else:
+                print(b.text() + "is deSelectd")
+        
+        pass
     def presstxt_btn1(self, event):
         print('clicking')
         self._screen2.frame_keyboard.setGeometry(QtCore.QRect(10,60,711,251))
@@ -422,7 +461,7 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         #main loop function
         self.thread_loop = True
         while self.thread_loop:
-            print(self.i)
+            #print(self.i)
             #print('GUI is running')
             a = datetime.now()
             seconds = a.second

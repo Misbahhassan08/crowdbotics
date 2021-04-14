@@ -143,7 +143,7 @@ class RPI(QThread):
             time.sleep(0.01)
             
             
-            print('{} , {}, {}'.format(self.count1,self.count2,self.count3))
+            #print('{} , {}, {}'.format(self.count1,self.count2,self.count3))
             
 
     
