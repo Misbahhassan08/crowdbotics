@@ -75,9 +75,10 @@ class GUI(QtWidgets.QWidget,threading.Thread):
 
         # ------------------------------  screen2   ---------------------------------------------------------------------------
         
-        #self._screen2.btn_pump1.clicked.connect(lambda: self.screen2_pump1())
-        #self._screen2.btn_pump2.clicked.connect(lambda: self.screen2_pump2())
-        #self._screen2.btn_pump3.clicked.connect(lambda: self.screen2_pump3())
+        self._screen2.btnPump1.clicked.connect(lambda: self.screen2_pump1())
+        self._screen2.btnPump2.clicked.connect(lambda: self.screen2_pump2())
+        self._screen2.btnPump3.clicked.connect(lambda: self.screen2_pump3())
+        self._screen2.btnPump4.clicked.connect(lambda: self.screen2_pump4())
         
         self._screen2.btnBack.clicked.connect(lambda: self.btn_open_screen1())
         self._screen2.txtbtn1.mouseReleaseEvent = self.presstxt_btn1
@@ -248,6 +249,31 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self.motor4 = False
         pass
     #------------------------------------- Screen 2 Functions --------------------------------------------------------------------------------
+
+    def screen2_pump1(self):
+        if self.motor1:
+            self.motor1 = False
+        else:
+            self.motor1 = True
+        pass
+    def screen2_pump2(self):
+        if self.motor2:
+            self.motor2 = False
+        else:
+            self.motor2 = True
+        pass
+    def screen2_pump3(self):
+        if self.motor3:
+            self.motor3 = False
+        else:
+            self.motor3 = True
+        pass
+    def screen2_pump4(self):
+        if self.motor4:
+            self.motor4 = False
+        else:
+            self.motor4 = True
+        pass
     def btn1Clicked(self):
         val = self._screen2.txtbtn1.text()
         if len(val)>0:
@@ -523,39 +549,62 @@ class GUI(QtWidgets.QWidget,threading.Thread):
                     seconds = a.second
                     minut = a.minute
                     hour = a.hour
+                    
                     #self._screen2.lbl_time.setText('{}:{}:{}'.format(hour,minut,seconds))
                     
+                    if self.mode == 'Time':
+                        self._screen2.lblTime.setText('Time Active')
+                        self._screen2.lblPulse.setText('')
+                        self._screen2.lblPulse_p1.setText('')
+                        self._screen2.lblPulse_p2.setText('')
+                        self._screen2.lblPulse_p3.setText('')
+                        self._screen2.lblPulse_p4.setText('')
+                        if self.motor1:
+                            self._screen2.lblTime_p1.setText('{}:{}'.format(minut,seconds))
+                        if self.motor2:
+                            self._screen2.lblTime_p2.setText('{}:{}'.format(minut,seconds))
+                        if self.motor3:
+                            self._screen2.lblTime_p3.setText('{}:{}'.format(minut,seconds))
+                        if self.motor4:
+                            self._screen2.lblTime_p4.setText('{}:{}'.format(minut,seconds))
+                        pass
+                    elif self.mode == 'Pulse':
+                        self._screen2.lblTime.setText('')
+                        self._screen2.lblPulse.setText('Pulse Active')
+                        self._screen2.lblPulse_p1.setText('{}'.format(self.pump1_hz))
+                        self._screen2.lblPulse_p2.setText('{}'.format(self.pump2_hz))
+                        self._screen2.lblPulse_p3.setText('{}'.format(self.pump3_hz))
+                        self._screen2.lblPulse_p4.setText('{}'.format(self.pump4_hz))
+                        
+                        self._screen2.lblTime_p1.setText('')
+                        self._screen2.lblTime_p2.setText('')
+                        self._screen2.lblTime_p3.setText('')
+                        self._screen2.lblTime_p4.setText('')
+                        pass
 
                     if self.motor1:
                         self.rpi.pump_1_on()
-                        self.rpi.pump_2_off()
-                        self.rpi.pump_3_off()
-                        self.rpi.pump_4_off()
-                        
-                        pass
-                    elif self.motor2:
-                        self.rpi.pump_1_off()
-                        self.rpi.pump_2_on()
-                        self.rpi.pump_3_off()
-                        self.rpi.pump_4_off()
-                        
-                        pass
-                    elif self.motor3:
-                        self.rpi.pump_1_off()
-                        self.rpi.pump_2_off()
-                        self.rpi.pump_3_on()
-                        self.rpi.pump_4_off()
-                        
-                        pass
                     else:
                         self.rpi.pump_1_off()
+                        
+                        pass
+                    if self.motor2:
+                        self.rpi.pump_2_on()
+                    else:
                         self.rpi.pump_2_off()
+                        
+                        
+                        pass
+                    if self.motor3:
+                        self.rpi.pump_3_on()
+                    else:
                         self.rpi.pump_3_off()
-                        self.rpi.pump_4_off()
-                        self.rpi.count1 = 0.0
-                        self.rpi.count2 = 0.0
-                        self.rpi.count3 = 0.0
-                        self.rpi.count4 = 0.0          
+                        
+                        pass
+                    if self.motor4:
+                        self.rpi.pump_4_on()
+                    else:
+                        self.rpi.pump_4_off()          
                 pass
         print('Loop ended')
 
