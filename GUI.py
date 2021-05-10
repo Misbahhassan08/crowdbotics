@@ -2,13 +2,15 @@
 import json
 import time
 from datetime import datetime, time
-import threading
 import sys
+import threading
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from PyQt5.QtCore import QThread, pyqtSignal
 import sqlite3
+import pigpio
 from screen1 import Ui_MainWindow1
 from screen2 import Ui_MainWindow2
 
@@ -33,34 +35,29 @@ class GUI2(QtWidgets.QWidget,Ui_MainWindow2 ):
 
 
 
-class GUI(QtWidgets.QWidget,threading.Thread):
+class GUI(QtWidgets.QWidget,threading.Thread,):
 
     
     def __init__(self):
         threading.Thread.__init__(self)
         QtWidgets.QWidget.__init__(self)
-        self.last_time1 = datetime.now()
-        self.last_time2 = datetime.now()
-        self.last_time3 = datetime.now()
-        self.last_time4 = datetime.now()
 
-        #thread loop crossing
-
+        self.pi = pigpio.pi()
+        
         self.thread_loop = True
-
         self.mode = "Pulse" # Time
         
         self.rpi = RPI()
         self._screen1 = GUI1()
         self._screen2 = GUI2()
 
-        self.screen1_message = ""
-        self.screen1_error = ""
-
         self._screen2.frame_keyboard.setGeometry(QtCore.QRect(100,500,500,500))
         # rpi signals
-
-        self.rpi.signalFlow.connect(self.flowrate)
+        
+        self.rpi.SensorFlow1.connect(self.flowrate1)
+        self.rpi.SensorFlow2.connect(self.flowrate2)
+        self.rpi.SensorFlow3.connect(self.flowrate3)
+        self.rpi.SensorFlow4.connect(self.flowrate4)
 
         #btn_start, btn_calibrate, cb_pump1, cb_pump1,. lbl_pump1
         
@@ -79,6 +76,7 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self._screen2.btnPump2.clicked.connect(lambda: self.screen2_pump2())
         self._screen2.btnPump3.clicked.connect(lambda: self.screen2_pump3())
         self._screen2.btnPump4.clicked.connect(lambda: self.screen2_pump4())
+        self._screen2.btnSave.clicked.connect(lambda: self.btn_save())
         
         self._screen2.btnBack.clicked.connect(lambda: self.btn_open_screen1())
         self._screen2.txtbtn1.mouseReleaseEvent = self.presstxt_btn1
@@ -93,7 +91,7 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self._screen2.btn3.clicked.connect(lambda: self.btn3Clicked())
 
         
-        
+        self.reset = 0
         self.s1BtnStart = False
         self.screen1 = True
         self.screen2 = False
@@ -105,11 +103,21 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self.motor3 = False
         self.motor4 = False
 
-        self.pump1_hz = 0
-        self.pump2_hz = 0
-        self.pump3_hz = 0
-        self.pump4_hz = 0
+        self.t1 = 0.0
+        self.t2 = 0.0
+        self.t3 = 0.0
+        self.t4 = 0.0
 
+        self.tt1 = 0.0
+        self.tt2 = 0.0
+        self.tt3 = 0.0
+        self.tt4 = 0.0
+
+        self.tresult1 = 0.0
+        self.tresult2 = 0.0
+        self.tresult3 = 0.0
+        self.tresult4 = 0.0
+        
         self.flow_rate1 = 0.0
         self.flow_rate2 = 0.0
         self.flow_rate3 = 0.0
@@ -157,35 +165,52 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         
         self.i = 1
         self._screen2.hide()
-       
-
+        self.deamon = True
         self.start()
+        print("TEST")
         pass
 
     
     #************************ Signals *******************************************
-    
+    def btn_save(self):
+        self.reset = 1
+        self.rpi.reset1()
+        self.rpi.reset2()
+        self.rpi.reset3()
+        self.rpi.reset4()
+
+        self.tt1 = 0.0
+        self.tt2 = 0.0
+        self.tt3 = 0.0
+        self.tt4 = 0.0
+        self.tresult1 = 0.0
+        self.tresult2 = 0.0
+        self.tresult3 = 0.0
+        self.tresult4 = 0.0
+        print("save button calling")
+        
+        pass
             
-    def flowrate(self, val ,val2 ,p):
-        if p == "pump1":
-            self.pump1_hz = val
-            self.flow_rate1 = val2
-            pass
-        elif p == "pump2":
-            self.pump2_hz = val
-            self.flow_rate2 = val2
-            pass
-        elif p == "pump3":
-            self.pump3_hz = val
-            self.flow_rate3 = val2
-            pass
-        elif p == "pump4":
-            self.pump4_hz = val
-            self.flow_rate4 = val2
-            pass
+    def flowrate1(self, p,t):
+        self.t1 = t
+        self.flow_rate1 = p
+        pass
+    
+    def flowrate2(self, p,t):
+        self.t2 = t
+        self.flow_rate2 = p
         pass
 
-    
+    def flowrate3(self, p,t):
+        self.t3 = t
+        self.flow_rate3 = p
+        pass
+
+    def flowrate4(self, p,t):
+        self.t4 = t
+        self.flow_rate4 = p
+        pass
+        
 
     def buttonState(self, b):
         
@@ -247,6 +272,7 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self.motor2 = False
         self.motor3 = False
         self.motor4 = False
+        self.reset = 0
         pass
     #------------------------------------- Screen 2 Functions --------------------------------------------------------------------------------
 
@@ -255,24 +281,45 @@ class GUI(QtWidgets.QWidget,threading.Thread):
             self.motor1 = False
         else:
             self.motor1 = True
+            if  self.tresult1 == 0.0 :
+                self.tt1 = self.pi.get_current_tick()
+                self.reset = 0
+            else:
+                self.tt1 = self.tresult1
         pass
     def screen2_pump2(self):
         if self.motor2:
             self.motor2 = False
         else:
             self.motor2 = True
+            if self.tresult2 == 0.0 :
+                self.tt2 = self.pi.get_current_tick()
+                self.reset = 0
+            else:
+                self.tt2 = self.tresult2
+            
         pass
     def screen2_pump3(self):
         if self.motor3:
             self.motor3 = False
         else:
             self.motor3 = True
+            if self.tresult3== 0.0 :
+                self.tt3 = self.pi.get_current_tick()
+                reset = 0
+            else:
+                self.tt3 = self.tresult3
         pass
     def screen2_pump4(self):
         if self.motor4:
             self.motor4 = False
         else:
             self.motor4 = True
+            if self.tresult4 == 0.0 :
+                self.tt4 = self.pi.get_current_tick()
+                reset = 0
+            else:
+                self.tt4 = self.tresult4
         pass
     def btn1Clicked(self):
         val = self._screen2.txtbtn1.text()
@@ -483,29 +530,20 @@ class GUI(QtWidgets.QWidget,threading.Thread):
         self._screen2.txtKeyboard_2.setText(vrnew)
 
     def run(self):
-        
-        #main loop function
         self.thread_loop = True
         while self.thread_loop:
-            #print(self.i)
-            #print('GUI is running')
-            a = datetime.now()
-            seconds = a.second
-            minut = a.minute
-            hour = a.hour
+            #time_new = pi.get_current_tick() + (1000000 * 15)
             
-            timestamp1 = str(datetime.now())
             if self.screen1:
                 if self.i == 0:
                     print('SHOW SCREEN1')
                     self._screen1.show()
                     self._screen2.hide()
                     self.i = 1
-                #print('In Screen 1')
-                self._screen1.lbl_pump1.setText('{},{}Hz'.format(self.pump1_hz, int(self.flow_rate1)))
-                self._screen1.lbl_pump2.setText('{},{}Hz'.format(self.pump2_hz, int(self.flow_rate2)))
-                self._screen1.lbl_pump3.setText('{},{}Hz'.format(self.pump3_hz, int(self.flow_rate3)))
-                self._screen1.lbl_pump4.setText('{},{}Hz'.format(self.pump4_hz, int(self.flow_rate4)))
+                self._screen1.lbl_pump1.setText('{}'.format(int(self.flow_rate1)))
+                self._screen1.lbl_pump2.setText('{}'.format(int(self.flow_rate2)))
+                self._screen1.lbl_pump3.setText('{}'.format(int(self.flow_rate3)))
+                self._screen1.lbl_pump4.setText('{}'.format(int(self.flow_rate4)))
                
                 if self.s1BtnStart == False:
                     #nothing happen clieck to start
@@ -522,15 +560,19 @@ class GUI(QtWidgets.QWidget,threading.Thread):
                 else:
                     self._screen1.btn_s1_start.setText('Stop')
                     if self.motor1:
+                        self.rpi.pump_1_on()
                         pass
                         
                     if self.motor2:
+                        self.rpi.pump_2_on()
                         pass
                         
                     if self.motor3:
+                        self.rpi.pump_3_on()
                         pass
                         
                     if self.motor4:
+                        self.rpi.pump_4_on()
                         pass
                
                 pass
@@ -545,36 +587,36 @@ class GUI(QtWidgets.QWidget,threading.Thread):
                     
                 else:
                     
-                    a = datetime.now()
-                    seconds = a.second
-                    minut = a.minute
-                    hour = a.hour
-                    
-                    #self._screen2.lbl_time.setText('{}:{}:{}'.format(hour,minut,seconds))
                     
                     if self.mode == 'Time':
+                        #time_new = pi.get_current_tick() + (1000000 * 15)
+                        
                         self._screen2.lblTime.setText('Time Active')
                         self._screen2.lblPulse.setText('')
                         self._screen2.lblPulse_p1.setText('')
                         self._screen2.lblPulse_p2.setText('')
                         self._screen2.lblPulse_p3.setText('')
                         self._screen2.lblPulse_p4.setText('')
-                        if self.motor1:
-                            self._screen2.lblTime_p1.setText('{}:{}'.format(minut,seconds))
-                        if self.motor2:
-                            self._screen2.lblTime_p2.setText('{}:{}'.format(minut,seconds))
-                        if self.motor3:
-                            self._screen2.lblTime_p3.setText('{}:{}'.format(minut,seconds))
-                        if self.motor4:
-                            self._screen2.lblTime_p4.setText('{}:{}'.format(minut,seconds))
+                        #if self.motor1:
+                        self.tresult1 = self.t1 - self.tt1
+                        self._screen2.lblTime_p1.setText('{}'.format(self.tresult1))
+                        #if self.motor2:
+                        self.tresult2 = self.t2 - self.tt2
+                        self._screen2.lblTime_p2.setText('{}'.format(self.tresult2))
+                        #if self.motor3:
+                        self.tresult3 = self.t3 - self.tt3
+                        self._screen2.lblTime_p3.setText('{}'.format(self.tresult3))
+                        #if self.motor4:
+                        self.tresult4 = self.t4 - self.tt4
+                        self._screen2.lblTime_p4.setText('{}'.format(self.tresult4))
                         pass
                     elif self.mode == 'Pulse':
                         self._screen2.lblTime.setText('')
                         self._screen2.lblPulse.setText('Pulse Active')
-                        self._screen2.lblPulse_p1.setText('{}'.format(self.pump1_hz))
-                        self._screen2.lblPulse_p2.setText('{}'.format(self.pump2_hz))
-                        self._screen2.lblPulse_p3.setText('{}'.format(self.pump3_hz))
-                        self._screen2.lblPulse_p4.setText('{}'.format(self.pump4_hz))
+                        self._screen2.lblPulse_p1.setText('{}'.format(self.flow_rate1))
+                        self._screen2.lblPulse_p2.setText('{}'.format(self.flow_rate2))
+                        self._screen2.lblPulse_p3.setText('{}'.format(self.flow_rate3))
+                        self._screen2.lblPulse_p4.setText('{}'.format(self.flow_rate4))
                         
                         self._screen2.lblTime_p1.setText('')
                         self._screen2.lblTime_p2.setText('')
@@ -584,12 +626,14 @@ class GUI(QtWidgets.QWidget,threading.Thread):
 
                     if self.motor1:
                         self.rpi.pump_1_on()
+                        
                     else:
                         self.rpi.pump_1_off()
                         
                         pass
                     if self.motor2:
                         self.rpi.pump_2_on()
+                        
                     else:
                         self.rpi.pump_2_off()
                         
@@ -597,12 +641,14 @@ class GUI(QtWidgets.QWidget,threading.Thread):
                         pass
                     if self.motor3:
                         self.rpi.pump_3_on()
+                        
                     else:
                         self.rpi.pump_3_off()
                         
                         pass
                     if self.motor4:
                         self.rpi.pump_4_on()
+                        
                     else:
                         self.rpi.pump_4_off()          
                 pass

@@ -19,24 +19,23 @@ Button4 : GPIO 25
 import json
 import time
 from datetime import datetime
-import RPi.GPIO as GPIO
+import pigpio
 import threading
 import sys
 import sqlite3
 from PyQt5.QtCore import QThread, pyqtSignal
+from EncoderClass import decoder
 
         
 
 
 class RPI(QThread):
-    signalFlow = pyqtSignal(float, float, str,  name='m_signals')
-    
-    
+    SensorFlow1 = pyqtSignal(int, float, name='m_signals1')
+    SensorFlow2 = pyqtSignal(int, float, name='m_signals2')
+    SensorFlow3 = pyqtSignal(int, float, name='m_signals3')
+    SensorFlow4 = pyqtSignal(int, float, name='m_signals4')
     def __init__(self):
-        
         QThread.__init__(self)
-        
-        
         # pumps Gpio's
         self.pump1 = 17
         self.pump2 = 27
@@ -54,189 +53,106 @@ class RPI(QThread):
         self.btn2 = 23
         self.btn3 = 24
         self.btn4 = 25
-        
-        self.last_time1 = datetime.now()
-        self.last_time2 = datetime.now()
-        self.last_time3 = datetime.now()
-        self.last_time4 = datetime.now()
-
-        self.pump1Status = False
-        self.pump2Status = False
-        self.pump3Status = False
-        self.pump4Status = False
-        
-        self.calibrate1 = False
-        self.calibrate2 = False
-        self.calibrate3 = False
-        self.calibrate4 = False
-
-        self.flow_rate1 = 0.0
-        self.flow_rate2 = 0.0
-        self.flow_rate3 = 0.0
-        self.flow_rate4 = 0.0
 
         self.count1 = 0
         self.count2 = 0
         self.count3 = 0
         self.count4 = 0
-        
-        
-        # Initiliaze all gpios as input and output
-        GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.pump1, GPIO.OUT)
-        GPIO.setup(self.pump2, GPIO.OUT)
-        GPIO.setup(self.pump3, GPIO.OUT)
-        GPIO.setup(self.pump4, GPIO.OUT)
-        
-        GPIO.output(self.pump1, GPIO.LOW)
-        GPIO.output(self.pump2, GPIO.LOW)
-        GPIO.output(self.pump3, GPIO.LOW)
-        GPIO.output(self.pump4, GPIO.LOW)
+
+        self.tick1 = 0.0
+        self.tick2 = 0.0
+        self.tick3 = 0.0
+        self.tick4 = 0.0
+
+        self.pi = pigpio.pi()
+        self.pi.set_mode(self.pump1, pigpio.OUTPUT)
+        self.pi.set_mode(self.pump2, pigpio.OUTPUT)
+        self.pi.set_mode(self.pump3, pigpio.OUTPUT)
+        self.pi.set_mode(self.pump4, pigpio.OUTPUT)
+
+        self.pi.write(self.pump1, 0)
+        self.pi.write(self.pump2, 0)
+        self.pi.write(self.pump3, 0)
+        self.pi.write(self.pump4, 0)
         
         #----------------------------------------------------------------------
-
-
-        GPIO.setup(self.sensor1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(self.sensor1,GPIO.RISING,callback=self.pulseCallback1,bouncetime=20)
-
-        GPIO.setup(self.sensor2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(self.sensor2,GPIO.RISING,callback=self.pulseCallback2,bouncetime=20)
-
-        GPIO.setup(self.sensor3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(self.sensor3,GPIO.RISING,callback=self.pulseCallback3,bouncetime=20)
-
-        GPIO.setup(self.sensor4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.add_event_detect(self.sensor4,GPIO.RISING,callback=self.pulseCallback4,bouncetime=20)
-
-        GPIO.setup(self.btn1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(self.btn2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(self.btn3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(self.btn4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-
-        GPIO.setup(self.btn1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        self.ctime = datetime.now()
-
+        self.s1 = decoder(self.pi,self.sensor1, self.callback1)
+        self.s2 = decoder(self.pi,self.sensor2, self.callback2)
+        self.s3 = decoder(self.pi,self.sensor3, self.callback3)
+        self.s4 = decoder(self.pi,self.sensor4, self.callback4)
+        self.b1 = decoder(self.pi,self.btn1, self.btnCallaback1)
+        self.b2 = decoder(self.pi,self.btn2, self.btnCallaback2)
+        self.b3 = decoder(self.pi,self.btn3, self.btnCallaback3)
+        self.b4 = decoder(self.pi,self.btn4, self.btnCallaback4)
+        time.sleep(0.01)
         print('INIT RPI DONE')
-        self.deamon = True
-        self.start()
 
-    def stop(self):
+    def reset1(self):
+        self.s1.count = 0.0
+    def reset2(self):
+        self.s2.count = 0.0
+    def reset3(self):
+        self.s3.count = 0.0
+    def reset4(self):
+        self.s4.count = 0.0
+
+    def btnCallaback1(self, pulse, tick):
+        pass
+    def btnCallaback2(self, pulse, tick):
+        pass
+    def btnCallaback3(self, pulse, tick):
+        pass
+    def btnCallaback4(self, pulse, tick):
+        pass
+    
+    def callback1(self, pulse, tick):
+        self.count1 = pulse
+        self.tick1 = tick
+        self.SensorFlow1.emit(int(self.count1),float(self.tick1))
         
-        self.terminate()
-        print("stop")
+        pass
+    
+    def callback2(self, pulse, tick):
+        self.count2 = pulse
+        self.tick2= tick
+        self.SensorFlow2.emit(int(self.count2),float(self.tick2))
         
-    def run(self):
-        while True:
-            #if (datetime.now() - self.ctime).total_seconds() > 1:
-                #self.count1 = self.count1 + self.flow_rate1
-                #self.count2 = self.count2 + self.flow_rate2
-                #self.count3 = self.count3 + self.flow_rate3
-                #self.count4 = self.count4 + self.flow_rate4
-                #self.ctime = datetime.now()
-            
-            self.signalFlow.emit(int(self.count1),float(self.flow_rate1), 'pump1')
-            self.signalFlow.emit(int(self.count2),float(self.flow_rate2), 'pump2')
-            self.signalFlow.emit(int(self.count3),float(self.flow_rate3), 'pump3')
-            self.signalFlow.emit(int(self.count4),float(self.flow_rate4), 'pump4')
-            time.sleep(0.01)
-            
-            
-            #print('{} , {}, {}'.format(self.count1,self.count2,self.count3))
-            
-
+        pass
     
-    def pulseCallback1(self, p):
-        self.count1 = self.count1 + 1
-
-        current_time = datetime.now()
-        diff = (current_time - self.last_time1).total_seconds()
-       
-        # Calculate current flow rate
-        hertz = 1. / diff
-        self.flow_rate1 = hertz / 7.5
-       
-        # Reset time of last pulse
-        self.last_time1 = current_time
-
+    def callback3(self, pulse, tick):
+        self.count3 = pulse
+        self.tick3 = tick
+        self.SensorFlow3.emit(int(self.count3),float(self.tick3))
+        pass
     
-    
-    
-    def pulseCallback2(self, p):
-        self.count2 = self.count2 + 1
-        current_time = datetime.now()
-        diff = (current_time - self.last_time2).total_seconds()
-       
-        # Calculate current flow rate
-        hertz = 1. / diff
-        self.flow_rate2 = hertz / 7.5
-       
-        # Reset time of last pulse
-        self.last_time2 = current_time
-    
-    
-    
-    def pulseCallback3(self, p):
-        self.count3 = self.count3 + 1
-        # Calculate the time difference since last pulse recieved
-        current_time = datetime.now()
-        diff = (current_time - self.last_time3).total_seconds()
-       
-        # Calculate current flow rate
-        hertz = 1. / diff
-        self.flow_rate3 = hertz / 7.5
-       
-        # Reset time of last pulse
-        self.last_time3 = current_time
-
-
-    
-    
-    def pulseCallback4(self, p):
-        self.count4 = self.count4 + 1 
-        # Calculate the time difference since last pulse recieved
-        current_time = datetime.now()
-        diff = (current_time - self.last_time1).total_seconds()
-       
-        # Calculate current flow rate
-        hertz = 1. / diff
-        self.flow_rate4 = hertz / 7.5
-       
-        # Reset time of last pulse
-        self.last_time4 = current_time
-        
+    def callback4(self, pulse, tick):
+        self.count4 = pulse
+        self.tick4 = tick
+        self.SensorFlow4.emit(int(self.count4),float(self.tick4))
+        pass
 
     def pump_1_on(self):
-        GPIO.output(self.pump1, GPIO.HIGH)
-        self. motor_status_1 = True
+        self.pi.write(self.pump1,1)
         
     def pump_2_on(self):
-        GPIO.output(self.pump2, GPIO.HIGH)
-        self. motor_status_2 = True
+        self.pi.write(self.pump2,1)
 
     def pump_3_on(self):
-        GPIO.output(self.pump3, GPIO.HIGH)
-        self. motor_status_3 = True
+        self.pi.write(self.pump3,1)
 
     def pump_4_on(self):
-        GPIO.output(self.pump4, GPIO.HIGH)
-        self. motor_status_4 = True
+        self.pi.write(self.pump4,1)
 
     def pump_1_off(self):
-        GPIO.output(self.pump1, GPIO.LOW)
-        self. motor_status_1 = False
+        self.pi.write(self.pump1,0)
         
     def pump_2_off(self):
-        GPIO.output(self.pump2, GPIO.LOW)
-        self. motor_status_2 = False
+        self.pi.write(self.pump2,0)
 
     def pump_3_off(self):
-        GPIO.output(self.pump3, GPIO.LOW)
-        self. motor_status_3 = False
+        self.pi.write(self.pump3,0)
 
     def pump_4_off(self):
-        GPIO.output(self.pump4, GPIO.LOW)
-        self. motor_status_4 = False
+        self.pi.write(self.pump4,0)
 
 
